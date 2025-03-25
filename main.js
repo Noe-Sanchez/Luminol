@@ -17,7 +17,8 @@ bloomLayer.set( BLOOM_SCENE );
 const params = {
   threshold: 0,
   strength: 1,
-  radius: 0.5,
+  //radius: 0.5,
+  radius: 0,
   exposure: 1
 };
 
@@ -34,14 +35,16 @@ document.body.appendChild( renderer.domElement );
 
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 200 );
+//const camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 200 );
+const camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 1000 );
 camera.position.set( -75, 45, 75 );
 camera.lookAt( 0, 100, 0 );
 
 const controls = new OrbitControls( camera, renderer.domElement );
 controls.maxPolarAngle = Math.PI * 0.5;
 controls.minDistance = 1;
-controls.maxDistance = 100;
+//controls.maxDistance = 100;
+controls.maxDistance = 200;
 controls.addEventListener( 'change', render );
 
 const renderScene = new RenderPass( scene, camera );
@@ -128,8 +131,21 @@ setupScene();
 function animate() {
   
   // Move sphere
-  sphere.position.x = Math.sin( Date.now() * 0.001 ) * 15;
-  sphere.position.z = Math.cos( Date.now() * 0.001 ) * 15;
+  //sphere.position.x = Math.sin( Date.now() * 0.001 ) * 15;
+  //sphere.position.z = Math.cos( Date.now() * 0.001 ) * 15;
+  
+  // Move all drones
+  for (let i = 0; i < num_drones; i++) {
+    drones[i].position.x = Math.sin( Date.now() * 0.001 + (6.28/(num_drones))*i ) * 10;
+    drones[i].position.z = Math.cos( Date.now() * 0.001 + (6.28/(num_drones))*i ) * 10;
+    //drones[i].position.y = Math.cos( Date.now() * 0.001 + (6.28/(num_drones))*i ) * 3 + 10;
+
+    //drones[i].position.x = Math.sin( 0.001 + (6.28/(num_drones))*i ) * 10;
+    //drones[i].position.z = Math.cos( 0.001 + (6.28/(num_drones))*i ) * 10;
+    //drones[i].position.x = Math.sin( 0.001 + (6.28/(num_drones-1))*i ) * 10;
+    //drones[i].position.z = Math.cos( 0.001 + (6.28/(num_drones-1))*i ) * 10;
+  }
+
 
   render();
 
@@ -196,9 +212,22 @@ function setupScene() {
 
   */
 
+  // Skybox
+  const skyboxGeometry = new THREE.SphereGeometry( 500, 60, 40 );
+  skyboxGeometry.scale( -1, 1, 1 );
+  const texture = new THREE.TextureLoader().load( 'pano.jpg' );
+
+  //texture.colorSpace = THREE.SRGBColorSpace;
+  const skyboxMaterial = new THREE.MeshBasicMaterial( { map: texture } );
+  const skybox = new THREE.Mesh( skyboxGeometry, skyboxMaterial );
+  scene.add( skybox );
+  skybox.rotation.y = Math.PI;
+
   // Add moonlight (directional)
+  let moon = new THREE.Vector3( 40, 40, 0 );
+
   const directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
-  directionalLight.position.set( 2, 10, 0 );
+  directionalLight.position.set( moon.x, moon.y, moon.z );
   directionalLight.target.position.set( 0, 0, 0 );
   directionalLight.castShadow = true;
   //directionalLight.castShadow = false;
@@ -210,6 +239,31 @@ function setupScene() {
   directionalLight.shadow.camera.right = 50;
   directionalLight.shadow.camera.top = 50;
   directionalLight.shadow.camera.bottom = -50;
+
+  // Add moon indicator
+  const moonGeometry = new THREE.SphereGeometry( 1, 32, 32 );
+  const moonMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } );
+  moonMaterial.transparent = true;
+  moonMaterial.opacity = 0.25;
+  const moonMesh = new THREE.Mesh( moonGeometry, moonMaterial );
+  moonMesh.position.set( moon.x, moon.y, moon.z );
+  scene.add( moonMesh );
+  moonMesh.layers.enable( BLOOM_SCENE );
+
+  // Add moonlight indicator (line from 40, 20, 0 to 0, 0, 0)
+  let moonmag = Math.sqrt( moon.x*moon.x + moon.y*moon.y + moon.z*moon.z );
+  const lineGeometry = new THREE.CylinderGeometry( 0.1, 0.1, moonmag, 32 );
+  // Make line go from 0, 0, 0 to moon.x, moon.y, moon.z
+  lineGeometry.translate( 0, moonmag/2, 0 ); 
+  let quat = new THREE.Quaternion();
+  quat.setFromUnitVectors( new THREE.Vector3( 0, 1, 0 ), new THREE.Vector3( moon.x, moon.y, moon.z ).normalize() );
+  lineGeometry.applyQuaternion( quat );
+  
+  const lineMaterial = new THREE.LineBasicMaterial( { color: 0xffffff } );
+  lineMaterial.transparent = true;
+  lineMaterial.opacity = 0.25;
+  const line = new THREE.Line( lineGeometry, lineMaterial );
+  scene.add( line );
 
   /*
   const geometry = new THREE.SphereGeometry( 1, 32, 32 );
@@ -227,20 +281,23 @@ function setupScene() {
 
   // Add drones
   for (let i = 0; i < num_drones; i++) {
-		const droneGeometry = new THREE.SphereGeometry( 1, 32, 32 );
-		const droneMaterial = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
-		const droneMesh = new THREE.Mesh( droneGeometry, droneMaterial );
-		droneMesh.castShadow = true;
-		droneMesh.position.set( Math.random() * 10 - 5, 2, Math.random() * 10 - 5 );
-		droneMesh.layers.enable( BLOOM_SCENE );
-		scene.add( droneMesh );
+    const droneGeometry = new THREE.SphereGeometry( 1, 32, 32 );
+    const droneMaterial = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+    const droneMesh = new THREE.Mesh( droneGeometry, droneMaterial );
+    droneMesh.castShadow = true;
+    droneMesh.position.set( Math.random() * 10 - 5, 15, Math.random() * 10 - 5 );
+    droneMesh.layers.enable( BLOOM_SCENE );
+    drones.push( droneMesh );
+    scene.add( droneMesh );
   }
 
   // Create floor
-  const floorGeometry = new THREE.PlaneGeometry( 100, 100, 1, 1 );
+  //const floorGeometry = new THREE.PlaneGeometry( 100, 100, 1, 1 );
+  //const floorGeometry = new THREE.PlaneGeometry( 500, 500, 1, 1 );
+  const floorGeometry = new THREE.CylinderGeometry( 500, 500, 1, 32 );
   const floorMaterial = new THREE.MeshPhongMaterial( { color: 0x808080 } );
   const floor = new THREE.Mesh( floorGeometry, floorMaterial );
-  floor.rotation.x = -Math.PI / 2;
+  //floor.rotation.x = -Math.PI / 2;
   scene.add( floor );
 
   floor.receiveShadow = true;
