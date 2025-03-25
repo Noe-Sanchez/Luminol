@@ -1,0 +1,17 @@
+{
+  "name": "luminol",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "run"
+  },
+  "author": "Noe-Sanchez",
+  "license": "GPL-2.0-only",
+  "description": "",
+  "dependencies": {
+    "three": "^0.174.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.3"
+  }
+}
