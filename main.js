@@ -19,7 +19,9 @@ const params = {
   strength: 1,
   //radius: 0.5,
   radius: 0,
-  exposure: 1
+  //exposure: 1
+  exposure: 0.7,
+  moonlight: false
 };
 
 const darkMaterial = new THREE.MeshBasicMaterial( { color: 'black' } );
@@ -29,6 +31,7 @@ const renderer = new THREE.WebGLRenderer( { antialias: true } );
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.toneMapping = THREE.ReinhardToneMapping;
+renderer.toneMappingExposure = Math.pow( params.exposure, 4.0 );
 renderer.setAnimationLoop( animate );
 renderer.shadowMap.enabled = true;
 document.body.appendChild( renderer.domElement );
@@ -41,7 +44,8 @@ camera.position.set( -75, 45, 75 );
 camera.lookAt( 0, 100, 0 );
 
 const controls = new OrbitControls( camera, renderer.domElement );
-controls.maxPolarAngle = Math.PI * 0.5;
+//controls.maxPolarAngle = Math.PI * 0.5;
+controls.maxPolarAngle = Math.PI * 0.5 - 0.05;
 controls.minDistance = 1;
 //controls.maxDistance = 100;
 controls.maxDistance = 200;
@@ -90,6 +94,10 @@ const mouse = new THREE.Vector2();
 let num_drones = 12;
 let drones = [];
 
+let sphere = new THREE.Mesh();
+let moonmesh = new THREE.Mesh();
+let moonline = new THREE.Line();
+
 const gui = new GUI();
 
 const bloomFolder = gui.addFolder( 'bloom' );
@@ -115,6 +123,8 @@ bloomFolder.add( params, 'radius', 0.0, 1.0 ).step( 0.01 ).onChange( function ( 
 
 } );
 
+bloomFolder.add( bloomPass, 'enabled' );
+
 const toneMappingFolder = gui.addFolder( 'tone mapping' );
 
 toneMappingFolder.add( params, 'exposure', 0.1, 2 ).onChange( function ( value ) {
@@ -124,7 +134,15 @@ toneMappingFolder.add( params, 'exposure', 0.1, 2 ).onChange( function ( value )
 
 } );
 
-let sphere = new THREE.Mesh();
+const vizFolder = gui.addFolder( 'moonlight visualization' );
+
+vizFolder.add( params, 'moonlight' ).onChange( function ( value ) {
+
+  moonmesh.material.opacity = value;
+  moonline.material.opacity = value;
+  render();
+
+} );
 
 setupScene();
 
@@ -245,10 +263,11 @@ function setupScene() {
   const moonMaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } );
   moonMaterial.transparent = true;
   moonMaterial.opacity = 0.25;
-  const moonMesh = new THREE.Mesh( moonGeometry, moonMaterial );
-  moonMesh.position.set( moon.x, moon.y, moon.z );
-  scene.add( moonMesh );
-  moonMesh.layers.enable( BLOOM_SCENE );
+  moonmesh = new THREE.Mesh( moonGeometry, moonMaterial );
+  moonmesh.position.set( moon.x, moon.y, moon.z );
+  scene.add( moonmesh );
+  moonmesh.material.opacity = 0;
+  moonmesh.layers.enable( BLOOM_SCENE );
 
   // Add moonlight indicator (line from 40, 20, 0 to 0, 0, 0)
   let moonmag = Math.sqrt( moon.x*moon.x + moon.y*moon.y + moon.z*moon.z );
@@ -262,8 +281,9 @@ function setupScene() {
   const lineMaterial = new THREE.LineBasicMaterial( { color: 0xffffff } );
   lineMaterial.transparent = true;
   lineMaterial.opacity = 0.25;
-  const line = new THREE.Line( lineGeometry, lineMaterial );
-  scene.add( line );
+  moonline = new THREE.Line( lineGeometry, lineMaterial );
+  moonline.material.opacity = 0;
+  scene.add( moonline );
 
   /*
   const geometry = new THREE.SphereGeometry( 1, 32, 32 );
@@ -294,8 +314,14 @@ function setupScene() {
   // Create floor
   //const floorGeometry = new THREE.PlaneGeometry( 100, 100, 1, 1 );
   //const floorGeometry = new THREE.PlaneGeometry( 500, 500, 1, 1 );
+  //const floorMaterial = new THREE.MeshPhongMaterial( { color: 0x808080 } );
+  const floorTexture = new THREE.TextureLoader().load( 'grass.jpg' );
+  floorTexture.wrapS = THREE.RepeatWrapping;
+  floorTexture.wrapT = THREE.RepeatWrapping;
+  floorTexture.repeat.set( 10, 10 );
+  const floorMaterial = new THREE.MeshStandardMaterial( { map: floorTexture } );
+
   const floorGeometry = new THREE.CylinderGeometry( 500, 500, 1, 32 );
-  const floorMaterial = new THREE.MeshPhongMaterial( { color: 0x808080 } );
   const floor = new THREE.Mesh( floorGeometry, floorMaterial );
   //floor.rotation.x = -Math.PI / 2;
   scene.add( floor );
