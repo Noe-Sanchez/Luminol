@@ -1,0 +1,6 @@
+[submodule "ros_ws/src/luminol_bridge/include/easywsclient"]
+	path = ros_ws/src/luminol_bridge/include/easywsclient
+	url = https://github.com/dhbaird/easywsclient.git
+[submodule "ros_ws/src/luminol_bridge/include/cpp-httplib"]
+	path = ros_ws/src/luminol_bridge/include/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib.git

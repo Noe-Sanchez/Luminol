@@ -7,9 +7,12 @@
   },
   "author": "Noe-Sanchez",
   "license": "GPL-2.0-only",
+  "type": "module",
   "description": "",
   "dependencies": {
-    "three": "^0.174.0"
+    "express": "^4.21.2",
+    "three": "^0.174.0",
+    "vite-express": "^0.20.0"
   },
   "devDependencies": {
     "vite": "^6.2.3"
