@@ -21,7 +21,10 @@ const params = {
   radius: 0,
   //exposure: 1
   exposure: 0.7,
-  moonlight: false
+  moonlight: false,
+  scale: 10,
+  applyColormap: false,
+  droneColor: 0x00ff00
 };
 
 const darkMaterial = new THREE.MeshBasicMaterial( { color: 'black' } );
@@ -98,6 +101,9 @@ let sphere = new THREE.Mesh();
 let moonmesh = new THREE.Mesh();
 let moonline = new THREE.Line();
 
+let drone_scale = params.scale;
+let drone_color = params.droneColor;
+
 const gui = new GUI();
 
 const bloomFolder = gui.addFolder( 'bloom' );
@@ -144,6 +150,33 @@ vizFolder.add( params, 'moonlight' ).onChange( function ( value ) {
 
 } );
 
+vizFolder.add( params, 'scale', 0.1, 20 ).onChange( function ( value ) {
+
+  drone_scale = value;
+
+} );
+
+vizFolder.add( params, 'applyColormap' ).onChange( function ( value ) {
+  for (let i = 0; i < num_drones; i++) {
+    if (value) {
+      drones[i].material.color.setHSL( i/num_drones, 0.7, 0.5 );
+    } else {
+      drones[i].material.color.setHex( drone_color ); 
+    }
+  } 
+} ); 
+
+vizFolder.addColor( params, 'droneColor' ).onChange( function ( value ) {
+
+  drone_color = value;
+  
+  for (let i = 0; i < num_drones; i++) {
+    drones[i].material.color.setHex( drone_color ); 
+  } 
+
+} );
+
+
 setupScene();
 
 function animate() {
@@ -153,7 +186,7 @@ function animate() {
   //sphere.position.z = Math.cos( Date.now() * 0.001 ) * 15;
   
   // Move all drones
-  for (let i = 0; i < num_drones; i++) {
+  /*for (let i = 0; i < num_drones; i++) {
     drones[i].position.x = Math.sin( Date.now() * 0.001 + (6.28/(num_drones))*i ) * 10;
     drones[i].position.z = Math.cos( Date.now() * 0.001 + (6.28/(num_drones))*i ) * 10;
     //drones[i].position.y = Math.cos( Date.now() * 0.001 + (6.28/(num_drones))*i ) * 3 + 10;
@@ -162,7 +195,7 @@ function animate() {
     //drones[i].position.z = Math.cos( 0.001 + (6.28/(num_drones))*i ) * 10;
     //drones[i].position.x = Math.sin( 0.001 + (6.28/(num_drones-1))*i ) * 10;
     //drones[i].position.z = Math.cos( 0.001 + (6.28/(num_drones-1))*i ) * 10;
-  }
+  }*/
 
 
   render();
@@ -328,6 +361,9 @@ function setupScene() {
 
   floor.receiveShadow = true;
 
+  // Add telemetry setInterval
+  setInterval( getTelemetry, 10 );
+
   render();
 
 }
@@ -350,6 +386,21 @@ function render() {
 
   // render the entire scene, then render bloom scene on top
   finalComposer.render();
+
+}
+
+function getTelemetry() {
+  let response = fetch('http://localhost:19001/stream')
+    .then(response => response.json())
+    .then(data => {
+      for (let i = 0; i < num_drones; i++) {
+	// Search for "tello_" + i
+	let current_drone = "tello_" + i
+	drones[i].position.x = data[current_drone].x*drone_scale;
+	drones[i].position.z = data[current_drone].y*drone_scale;
+	drones[i].position.y = data[current_drone].z*drone_scale;
+      }
+  });
 
 }
 

@@ -28,10 +28,6 @@ class LuminolBridge : public rclcpp::Node{
       this->declare_parameter("http_port", 19001);
       http_port = this->get_parameter("http_port").as_int();
 
-      // Make 0.1s timer
-      stream_timer = this->create_wall_timer(100ms, std::bind(&LuminolBridge::stream_callback, this));
-
-
       std::cout << "Luminol Bridge initialized at " << http_port << std::endl;
 
       for (int i = 0; i < num_drones; i++){
@@ -57,7 +53,9 @@ class LuminolBridge : public rclcpp::Node{
 	    }
 	  }
 	  json += "}";
+	  // Add access control headers as well
 	  res.set_content(json, "application/json");
+	  res.set_header("Access-Control-Allow-Origin", "*");
       });
 
       pthread_create(&server_thread, NULL, run_server, &server);
@@ -68,10 +66,6 @@ class LuminolBridge : public rclcpp::Node{
       follower_poses[i] = msg->pose;
     }
 
-    void stream_callback(){
-      std::cout << "Stream callback" << std::endl; 
-    }
-
   private: 
 
     int num_drones; 
@@ -79,7 +73,6 @@ class LuminolBridge : public rclcpp::Node{
     
     httplib::Server server;
 
-    rclcpp::TimerBase::SharedPtr stream_timer;
     std::vector<rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr> follower_pose_subscriptions;
     
     std::vector<geometry_msgs::msg::Pose> follower_poses;
@@ -88,7 +81,8 @@ class LuminolBridge : public rclcpp::Node{
 
 void *run_server(void *args){
   httplib::Server *server = (httplib::Server *)args;
-  server->listen("0.0.0.0", 19001);
+  //server->listen("0.0.0.0", 19001);
+  server->listen("127.0.0.1", 19001);
   return NULL;
 }
 
